@@ -124,16 +124,17 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
-    if (!status) {
+    if (!status && !origins.length) {
       return setCharacters(responseCharacters);
     }
-    if (origins.length) {
+    if (origins.length && !status) {
       setCharacters(
-        responseCharacters.filter(
-          item =>
-            item.status == status &&
-            origins.includes(item.origin.name.toLowerCase()),
-        ),
+        responseCharacters.filter(item => {
+          let originName = item.origin.name.includes('Earth')
+            ? 'Earth'
+            : 'unknown';
+          return origins.includes(originName);
+        }),
       );
     } else {
       setCharacters(responseCharacters.filter(item => item.status == status));
@@ -176,6 +177,7 @@ function App(): React.JSX.Element {
             placeholder="search"
             placeholderTextColor={'#444'}
           />
+          <Text>{JSON.stringify(origins)}</Text>
           <View
             style={{
               flexDirection: 'row',
