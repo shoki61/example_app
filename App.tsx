@@ -177,7 +177,6 @@ function App(): React.JSX.Element {
             placeholder="search"
             placeholderTextColor={'#444'}
           />
-          <Text>{JSON.stringify(origins)}</Text>
           <View
             style={{
               flexDirection: 'row',
