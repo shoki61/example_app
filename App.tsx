@@ -16,7 +16,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
 
@@ -74,7 +73,6 @@ const Character = ({name, status, image, originName}: Character) => {
 };
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
   const [characters, setCharacters] = useState<object[]>([]);
   const [status, setStatus] = useState('');
   const [origins, setOrigins] = useState<string[]>([]);
@@ -103,9 +101,24 @@ function App(): React.JSX.Element {
   };
 
   const search = (v: string) => {
-    let allCharacters = [...responseCharacters].filter(item =>
-      item.name.toLowerCase().includes(v.toLowerCase()),
-    );
+    let allCharacters = [...responseCharacters].filter(item => {
+      if (status || origins.length) {
+        if (origins.length) {
+          return (
+            item.name.toLowerCase().includes(v.toLowerCase()) &&
+            item.status == status &&
+            origins.includes(item.name)
+          );
+        } else {
+          return (
+            item.name.toLowerCase().includes(v.toLowerCase()) &&
+            item.status == status
+          );
+        }
+      } else {
+        return item.name.toLowerCase().includes(v.toLowerCase());
+      }
+    });
 
     setCharacters(allCharacters);
   };
@@ -114,20 +127,40 @@ function App(): React.JSX.Element {
     if (!status) {
       return setCharacters(responseCharacters);
     }
-    setCharacters(responseCharacters.filter(item => item.status == status));
+    if (origins.length) {
+      setCharacters(
+        responseCharacters.filter(
+          item =>
+            item.status == status &&
+            origins.includes(item.origin.name.toLowerCase()),
+        ),
+      );
+    } else {
+      setCharacters(responseCharacters.filter(item => item.status == status));
+    }
   }, [status]);
 
   useEffect(() => {
     let result: object[] = [];
-    if (!origins.length) return setCharacters(responseCharacters);
+    if (!origins.length) {
+      return setCharacters(
+        status.length
+          ? responseCharacters.filter(item => item.status == status)
+          : responseCharacters,
+      );
+    }
     for (let i = 0; i < responseCharacters.length; i++) {
-      let originName = responseCharacters[i].origin.name
-        .toLowerCase()
-        .includes('earth')
+      let originName = responseCharacters[i].origin.name.includes('Earth')
         ? 'Earth'
         : 'unknown';
       if (origins.includes(originName)) {
-        result.push(responseCharacters[i]);
+        if (status.length) {
+          if (responseCharacters[i].status == status) {
+            result.push(responseCharacters[i]);
+          }
+        } else {
+          result.push(responseCharacters[i]);
+        }
       }
     }
     setCharacters(result);
@@ -160,7 +193,7 @@ function App(): React.JSX.Element {
                   setStatus(v ? 'Alive' : '');
                 }}
               />
-              <Text style={{marginLeft: 5}}>Canlı</Text>
+              <Text style={{marginLeft: 5}}>Canlı{status}</Text>
             </View>
             <View
               style={{
