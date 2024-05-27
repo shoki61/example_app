@@ -5,93 +5,236 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import axios from 'axios';
+import React, {useEffect, useState} from 'react';
 import {
+  Alert,
+  FlatList,
+  Image,
   SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+let responseCharacters: object[] = [];
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+type Character = {
+  name: String;
+  status: String;
+  image: String;
+  originName: String;
+};
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+const CheckBox = ({
+  onPress = () => {},
+  value,
+}: {
+  onPress: Function;
+  value: boolean;
+}) => {
+  const [currentValue, setCurrentValue] = useState(value);
+
+  useEffect(() => {
+    setCurrentValue(value);
+  }, [value]);
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <TouchableOpacity
+      onPress={() => {
+        onPress(!currentValue);
+        setCurrentValue(prev => !prev);
+      }}
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: currentValue ? 'purple' : '#ccc',
+      }}>
+      <Text>✓</Text>
+    </TouchableOpacity>
+  );
+};
+
+const Character = ({name, status, image, originName}: Character) => {
+  return (
+    <View style={styles.characterContainer}>
+      <Image style={styles.image} source={{uri: image}} />
+      <View style={{padding: 10}}>
+        <Text style={{marginBottom: 10}}>{name}</Text>
+        <Text>{status}</Text>
+        <Text>{originName}</Text>
+      </View>
     </View>
   );
-}
+};
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const [characters, setCharacters] = useState<object[]>([]);
+  const [status, setStatus] = useState('');
+  const [origins, setOrigins] = useState<string[]>([]);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  useEffect(() => {
+    axios
+      .get('https://rickandmortyapi.com/api/character')
+      .then(res => {
+        responseCharacters = res.data.results;
+        setCharacters(res.data.results);
+      })
+      .catch(e => {
+        Alert.alert('Beklenmedik hata oluştu');
+      });
+  }, []);
+
+  const renderItem = ({item}) => {
+    return (
+      <Character
+        name={item.name}
+        status={item.status}
+        image={item.image}
+        originName={item.origin.name}
+      />
+    );
   };
 
+  const search = (v: string) => {
+    let allCharacters = [...responseCharacters].filter(item =>
+      item.name.toLowerCase().includes(v.toLowerCase()),
+    );
+
+    setCharacters(allCharacters);
+  };
+
+  useEffect(() => {
+    if (!status) {
+      return setCharacters(responseCharacters);
+    }
+    setCharacters(responseCharacters.filter(item => item.status == status));
+  }, [status]);
+
+  useEffect(() => {
+    let result: object[] = [];
+    if (!origins.length) return setCharacters(responseCharacters);
+    for (let i = 0; i < responseCharacters.length; i++) {
+      let originName = responseCharacters[i].origin.name
+        .toLowerCase()
+        .includes('earth')
+        ? 'Earth'
+        : 'unknown';
+      if (origins.includes(originName)) {
+        result.push(responseCharacters[i]);
+      }
+    }
+    setCharacters(result);
+  }, [origins]);
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    <SafeAreaView style={{flex: 1}}>
+      <View style={{width: '100%', flex: 1, padding: 20}}>
+        <View style={{width: '100%'}}>
+          <TextInput
+            onChangeText={search}
+            style={styles.input}
+            placeholder="search"
+            placeholderTextColor={'#444'}
+          />
+          <View
+            style={{
+              flexDirection: 'row',
+              marginBottom: 20,
+              justifyContent: 'space-between',
+            }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+              <CheckBox
+                value={status == 'Alive'}
+                onPress={(v: boolean) => {
+                  setStatus(v ? 'Alive' : '');
+                }}
+              />
+              <Text style={{marginLeft: 5}}>Canlı</Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+              <CheckBox
+                value={status == 'Dead'}
+                onPress={(v: string) => {
+                  setStatus(v ? 'Dead' : '');
+                }}
+              />
+              <Text style={{marginLeft: 5}}>Ölü</Text>
+            </View>
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <CheckBox
+                value={status == 'unknown'}
+                onPress={(v: boolean) => {
+                  setStatus(v ? 'unknown' : '');
+                }}
+              />
+              <Text style={{marginLeft: 5}}>Bilinmiyor</Text>
+            </View>
+          </View>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              marginBottom: 20,
+              justifyContent: 'space-between',
+            }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+              <CheckBox
+                value={origins.includes('Earth')}
+                onPress={(v: boolean) => {
+                  if (origins.includes('Earth')) {
+                    setOrigins(origins.filter(item => item !== 'Earth'));
+                  } else {
+                    setOrigins([...origins, 'Earth']);
+                  }
+                }}
+              />
+              <Text style={{marginLeft: 5}}>Dünya</Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+              <CheckBox
+                value={origins.includes('unknown')}
+                onPress={(v: string) => {
+                  if (origins.includes('unknown')) {
+                    setOrigins(origins.filter(item => item !== 'unknown'));
+                  } else {
+                    setOrigins([...origins, 'unknown']);
+                  }
+                }}
+              />
+              <Text style={{marginLeft: 5}}>Bilinmiyor</Text>
+            </View>
+          </View>
         </View>
-      </ScrollView>
+        <FlatList
+          columnWrapperStyle={{justifyContent: 'space-between'}}
+          numColumns={2}
+          data={characters}
+          renderItem={renderItem}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -112,6 +255,27 @@ const styles = StyleSheet.create({
   },
   highlight: {
     fontWeight: '700',
+  },
+  input: {
+    width: '100%',
+    height: 45,
+    borderRadius: 99,
+    borderWidth: 2,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  characterContainer: {
+    width: '47%',
+    height: 200,
+    backgroundColor: 'white',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  image: {
+    width: '100%',
+    height: '50%',
   },
 });
 
